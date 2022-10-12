@@ -1,5 +1,6 @@
 #Hafiza Ramzah Rehman
 #Jainam Parikh
+#Date Oct 12, 2022
 
 #import argparse
 import argparse
@@ -39,17 +40,32 @@ def handle_client(server_IP,server_port):
         new_msg = s.recv(1024).decode()
         if "Auction Finished" in new_msg:
             print(new_msg)
+        print("Disconnecting from the Auctioneer server. Auction is over!")
 
     elif "Your role is: [Buyer]" in new_msg:
         print(new_msg)
-
         #wait for bidding has started message from the Auctioneer.
         new_msg = s.recv(1024).decode()
         if "Bidding has Started" in new_msg:
             print(new_msg)
-            pass
+            is_bid_correct=False
+            while not is_bid_correct:
+                bid = (input())
+                s.send(bid.encode())
+                new_msg = s.recv(1024).decode()
+                print(new_msg)
+                if "Invalid bid" in new_msg:
+                    pass
+                elif "Bid received" in new_msg:
+                    is_bid_correct=True
+            #correct bit has been received
+            # wait for Auction Finished message from the server
+            new_msg = s.recv(1024).decode()
+            if "Auction Finished" in new_msg:
+                print(new_msg)
+            print("Disconnecting from the Auctioneer server. Auction is over!")
 
-    elif "Server is busy" in new_msg or "Bidding on-going" in new_msg:
+    elif "Server is busy" in new_msg:
         print(new_msg)
     # elif role is Buyer
     # elif "Your role is: [Buyer]" in new_msg:
