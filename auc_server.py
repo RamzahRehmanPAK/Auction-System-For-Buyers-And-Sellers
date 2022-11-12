@@ -1,5 +1,5 @@
 # Hafiza Ramzah Rehman
-# Jainam Parikh
+# Jainam Mitul Parikh
 # Date Oct 12, 2022
 
 # imported the socket library
@@ -48,6 +48,9 @@ class AutionServer:
         self.auction_finished_event = Event()
         self.winner_number = -1
         self.actual_payment = -1
+        #! Added two variables here:
+        self.seller_ip = ""
+        self.winner_ip = ""
 
     def reinitialize(self,server_port):
         # the server is waiting for seller
@@ -67,6 +70,9 @@ class AutionServer:
         self.auction_finished_event = Event()
         self.winner_number = -1
         self.actual_payment = -1
+        #! Added two variables here:
+        self.seller_ip = ""
+        self.winner_ip = ""
 
     # Got the basic skeleton of TCP server from https://www.geeksforgeeks.org/socket-programming-python/.
     def handle_auction(self):
@@ -102,6 +108,8 @@ class AutionServer:
             if self.status == 0 and self.seller_thread == None:
                 self.reinitialize(self.server_port)
                 print("Seller is connected from " + str(client_ip) + ":" + str(client_port))
+                #! Assigning client_ip to seller_ip
+                self.seller_ip = client_ip
                 print(">> New Seller Thread spawned")
                 self.seller_thread = self.ClientThread(client_ip, client_port, clientsock, SELLER, self)
                 self.seller_thread.start()
@@ -174,6 +182,8 @@ class AutionServer:
 
             if actual_payment >= self.auction_server.min_price:
                 self.auction_server.winner_number = winner.client_number
+                #! Assigning client_ip to winner_ip
+                self.auction_server.winner_ip = winner.ip
                 self.auction_server.actual_payment = actual_payment
                 print("Item sold! The highest bid is $" + str(highest_bid) + ". The actual payment is $" + str(
                     self.auction_server.actual_payment)+"\n")
@@ -242,9 +252,13 @@ class AutionServer:
                 self.auction_server.auction_finished_event.wait()
                 # auction finished
                 if self.auction_server.winner_number != -1:
-                    message = 'Auction Finished!\nSucces! Your item ' + str(
+                    #message = 'Auction Finished!\nSuccess! Your item ' + str(
+                    #    self.auction_server.item_name) + ' has been sold for $' + str(
+                    #    self.auction_server.actual_payment) + "\n"
+                    #! added self.auction_server.winner_ip here
+                    message = 'Auction Finished!\nSuccess! Your item ' + str(
                         self.auction_server.item_name) + ' has been sold for $' + str(
-                        self.auction_server.actual_payment) + "\n"
+                        self.auction_server.actual_payment) + '. Buyer IP: ' + str(self.auction_server.winner_ip) + "\n"
                 else:
                     message = 'Auction Finished!\nFailure! Unfortunately, your item was not sold in the auction.\n'
                 self.socket.send(message.encode())
@@ -279,9 +293,13 @@ class AutionServer:
                 # auction has finished
 
                 if self.auction_server.winner_number == self.client_number:
+                    #message = 'Auction Finished!\nYou won this item ' \
+                    #          + self.auction_server.item_name + '! Your payment due is $' \
+                    #          + str(self.auction_server.actual_payment) + "\n"
+                    #! add self.auction_server.seller_ip here
                     message = 'Auction Finished!\nYou won this item ' \
                               + self.auction_server.item_name + '! Your payment due is $' \
-                              + str(self.auction_server.actual_payment) + "\n"
+                              + str(self.auction_server.actual_payment) + '. Seller IP: ' + str(self.auction_server.seller_ip) +"\n"
                 else:
                     message = 'Auction Finished!\nUnfortunately you did not win in the last round.\n'
                 self.socket.send(message.encode())
