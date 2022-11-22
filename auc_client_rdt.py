@@ -67,7 +67,8 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
         if soldFlag==1:
             localPort=udpRDT_port
             UDPServerSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-            UDPServerSocket.bind((winnerIP, localPort))
+            UDPServerSocket.bind((sellerIP, localPort))
+            #UDPServerSocket.bind((winnerIP, localPort))
             print("UDP socket open for RDT")
             bytesAddressPair = UDPServerSocket.recvfrom(1024)
             address = bytesAddressPair[1]
@@ -132,7 +133,7 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                 while True:
                     #nmLoss = (nmLoss+1) % 2
 
-                    nmLoss = numpy.random.binomial(n=1, p=packet_loss_rate)
+                    nmLoss = 0
 
                     ctlPkt = packetHeader(reTrans=reTrans, seq_num=seq_num, fileSize=size, typeOfPacket=0, ctl="fin")
                     lossFlag = sendPacket(ctlPkt, address, UDPServerSocket, nmLoss)
