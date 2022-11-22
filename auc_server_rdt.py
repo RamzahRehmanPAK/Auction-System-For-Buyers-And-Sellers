@@ -1,6 +1,6 @@
 # Hafiza Ramzah Rehman
 # Jainam Mitul Parikh
-# Date Oct 12, 2022
+# Date Nov 12, 2022
 
 # imported the socket library
 import copy
@@ -283,7 +283,7 @@ class AutionServer:
                 # correct bid has been received for this buyer
 
                 # wait for all bids to arrive.
-                if not self.auction_server.all_bids_received_event.isSet():
+                if not self.auction_server.all_bids_received_event.is_set():
                     if (len(self.auction_server.buyerBids) == len(self.auction_server.buyerThreads)):
                         self.auction_server.all_bids_received_event.set()
                 self.auction_server.all_bids_received_event.wait()

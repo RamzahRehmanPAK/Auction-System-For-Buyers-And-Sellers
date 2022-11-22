@@ -1,6 +1,6 @@
 #Hafiza Ramzah Rehman
 #Jainam Mitul Parikh
-#Date Oct 22, 2022
+#Date Nov 22, 2022
 
 #import argparse
 import argparse
@@ -12,6 +12,9 @@ import os
 from datetime import datetime
 import numpy
 import pickle
+
+seller_file_path =  './' + 'tosend.file'
+WB_file_path="./" +"recved.file"
 
 #Got the basic skeleton of TCP client from https://www.geeksforgeeks.org/socket-programming-python/.
 def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.0):
@@ -73,18 +76,23 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
 
             print("Start sending file.")
             # start the file transfer
-            file = 'serverSent/test_1.txt'
+            file =seller_file_path
             if os.path.isfile(file):  # if file is found on the server           
                 # get the file size
                 size = os.path.getsize(file)
 
-                #random loss
-                nmLoss=numpy.random.binomial(n=1, p=packet_loss_rate)
+                # #random loss
+                # nmLoss=numpy.random.binomial(n=1, p=packet_loss_rate)
                 #nmLoss = (nmLoss+1) % 2
+
                 seq_num = 0
                 reTrans=0
                 while True:
                     #nmLoss = (nmLoss+1) % 2
+
+                    # random loss
+                    nmLoss = numpy.random.binomial(n=1, p=packet_loss_rate)
+
                     ctlPkt = packetHeader(reTrans=reTrans, seq_num=seq_num, fileSize=size, typeOfPacket=0, ctl="start")
                     lossFlag = sendPacket(ctlPkt, address, UDPServerSocket, nmLoss)
 
@@ -101,14 +109,14 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
 
                 f = open(file=file, mode='rb')
                 # read file in segments of 2000 bytes
-                data = f.read(3)
+                packet_size=2000 #bytes
+                data = f.read(packet_size)
                 dataRead = len(data)
                 reTrans=0
                 while data:
                     #nmLoss = (nmLoss+1) % 2
                     # Build packet
                     pkt = packetHeader(reTrans=reTrans, data=data, seq_num=seq_num, chunk=dataRead, fileSize=size)
-                    
                     lossFlag = sendPacket(pkt, address, UDPServerSocket, nmLoss)
                     #print(lossFlag)
                     if lossFlag == 1:
@@ -118,7 +126,7 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                         continue
 
                     seq_num = (seq_num + 1) % 2
-                    data = f.read(3)
+                    data = f.read(packet_size)
                     dataRead += len(data)
                     reTrans=0
 
@@ -130,7 +138,7 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                     lossFlag = sendPacket(ctlPkt, address, UDPServerSocket, nmLoss)
 
                     if lossFlag == 1:
-                        print("\tfrom fin")
+                        #print("\tfrom fin")
                         print("Msg re-sent", ctlPkt.__get__('seq_num'))
                         reTrans += 1
                         continue
@@ -153,6 +161,7 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                     pass
                 elif "Bid received" in new_msg:
                     is_bid_correct=True
+
             #correct bit has been received
             # wait for Auction Finished message from the server
             new_msg = s.recv(1024).decode()
@@ -167,6 +176,8 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
 
         # Checking the Win Flag and start connect to the UDP Socket
         if wonFlag==1:
+
+            #waiting for some time for seller to send first message
             time.sleep(2)
 
             #make UDP socket
@@ -177,9 +188,11 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
             UDPClientSocket.sendto(bytesToSend, serverAddressPort)
 
             print("UDP socket open for RDT")
-            received_file = 'clientReceived/' + 'test_1.txt'
+            received_file = WB_file_path
             open(file=received_file, mode='wb').close()
             f = open(file=received_file, mode='ab')
+
+            # start timer for the Transfer Completion Time
             tct = datetime.now()
 
             print("Start receiving file.")
@@ -234,8 +247,8 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                     else:
                         print("Msg received with mismatched sequence number", pkt.__get__('seq_num'),". Expecting", expSeqN)
                         print("Ack re-sent:", pkt.__get__('seq_num'))
-                        #ack = packetHeader(seq_num=pkt.__get__('seq_num'), ack='+')
-                        #  UDPClientSocket.sendto(ack.__serialize__(),serverAddressPort)
+                        ack = packetHeader(seq_num=pkt.__get__('seq_num'), ack='+')
+                        UDPClientSocket.sendto(ack.__serialize__(),serverAddressPort)
 
                 except Exception as e:
                     print("Exception in Receiver:", e)
@@ -268,18 +281,17 @@ def sendPacket(packet, client, UDPServerSocket, loss):
     lossFlag = 0
 
     UDPServerSocket.sendto(packet.__serialize__(), client)
-
     if reTrans == '0':
         if typeOfPacket == '0':
             if ctl == 'fin':
                 print('Sending control seq ' + seq_num + ': ' + ctl)        
             elif ctl == 'start':
+                UDPServerSocket.settimeout(2)
                 print('Sending control seq ' + seq_num + ': start ' + fileSize)
         else:
             print('Sending data seq ' + seq_num + ': ' + chunk + ' / ' + fileSize)
-
     try:
-        UDPServerSocket.settimeout(2)
+        ##todo: check whether the IP of the sender same as the winnerIP
         res = UDPServerSocket.recvfrom(4000)[0]
         pkt = packetHeader(pickled=res)
         #print("\t\tfrom timeout part")
@@ -292,9 +304,11 @@ def sendPacket(packet, client, UDPServerSocket, loss):
             pkt = packetHeader(pickled=res)
             pkt.__print__()
         else:
-            print("Ack dropped", pkt.__get('seq_num'))
+            print("Ack dropped", pkt.__get__('seq_num'))
             lossFlag=1
-    except:
+    except Exception as inst:
+        #socket.timeout
+        #print(type(inst))
         lossFlag=1
         #print("in except:", lossFlag)
 
