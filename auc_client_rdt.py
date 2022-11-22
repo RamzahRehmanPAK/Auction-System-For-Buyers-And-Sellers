@@ -81,15 +81,9 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                 # get the file size
                 size = os.path.getsize(file)
 
-                # #random loss
-                # nmLoss=numpy.random.binomial(n=1, p=packet_loss_rate)
-                #nmLoss = (nmLoss+1) % 2
-
                 seq_num = 0
                 reTrans=0
                 while True:
-                    #nmLoss = (nmLoss+1) % 2
-
                     # random loss
                     nmLoss = numpy.random.binomial(n=1, p=packet_loss_rate)
 
@@ -98,7 +92,7 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
 
                     if lossFlag == 1:
                         #print("\tfrom start")
-                        print("Msg re-sent", ctlPkt.__get__('seq_num'))
+                        print("Msg re-sent:", ctlPkt.__get__('seq_num'))
                         reTrans += 1
                         continue
                     else:
@@ -115,6 +109,9 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                 reTrans=0
                 while data:
                     #nmLoss = (nmLoss+1) % 2
+
+                    nmLoss = numpy.random.binomial(n=1, p=packet_loss_rate)
+
                     # Build packet
                     pkt = packetHeader(reTrans=reTrans, data=data, seq_num=seq_num, chunk=dataRead, fileSize=size)
                     lossFlag = sendPacket(pkt, address, UDPServerSocket, nmLoss)
@@ -134,12 +131,15 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                 reTrans=0
                 while True:
                     #nmLoss = (nmLoss+1) % 2
+
+                    nmLoss = numpy.random.binomial(n=1, p=packet_loss_rate)
+
                     ctlPkt = packetHeader(reTrans=reTrans, seq_num=seq_num, fileSize=size, typeOfPacket=0, ctl="fin")
                     lossFlag = sendPacket(ctlPkt, address, UDPServerSocket, nmLoss)
 
                     if lossFlag == 1:
                         #print("\tfrom fin")
-                        print("Msg re-sent", ctlPkt.__get__('seq_num'))
+                        print("Msg re-sent:", ctlPkt.__get__('seq_num'))
                         reTrans += 1
                         continue
                     else:
@@ -205,7 +205,6 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
             while True:
                 try:
                     nmLoss=numpy.random.binomial(n=1, p=packet_loss_rate)
-                    #nmLoss = (nmLoss+1) % 2
                     
                     # AS recvfrom receives in tuple, we need just the message
                     res = UDPClientSocket.recvfrom(4000)[0]
@@ -220,7 +219,7 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                                 #sending ack for fin
                                 ack = packetHeader(seq_num=pkt.__get__('seq_num'), ack='+')
                                 UDPClientSocket.sendto(ack.__serialize__(),serverAddressPort)
-                                print("\t\t\tExpected Seq:", expSeqN)
+                                #print("\t\t\tExpected Seq:", expSeqN)
                                 pkt.__print__()
                                 if pkt.__get__('ctl') == "fin":
                                     f.close()
@@ -230,7 +229,7 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                                     expSeqN = (expSeqN + 1) % 2
                                     continue
                             else:
-                                print("\t\t\tExpected Seq:", expSeqN)
+                                #print("\t\t\tExpected Seq:", expSeqN)
                                 pkt.__print__()
                                 #writing data to file
                                 f.write(pkt.__get__('data'))
@@ -243,7 +242,7 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                                 UDPClientSocket.sendto(ack.__serialize__(),serverAddressPort)
 
                         else:
-                            print("Pkt dropped", pkt.__get__('seq_num'))
+                            print("Pkt dropped:", pkt.__get__('seq_num'))
                     else:
                         print("Msg received with mismatched sequence number", pkt.__get__('seq_num'),". Expecting", expSeqN)
                         print("Ack re-sent:", pkt.__get__('seq_num'))
@@ -255,9 +254,9 @@ def handle_client(server_IP='',server_port='',udpRDT_port='',packet_loss_rate=0.
                     break
 
             tct = (datetime.now() - tct).total_seconds()
-            with open('log.txt', 'a') as log:
-                metrics = '\'\'^||^\'\'' + '\n'
-                metrics += 'THROUGHPUT=' + str(dataWritten/tct) + '\n'
+            metrics = ""
+            with open('performance.txt', 'a') as log:
+                metrics += str(packet_loss_rate) + "," + str(dataWritten) + ',' + str(tct) + "," + str(dataWritten/tct) + '\n'
                 log.write(metrics)
 
             #writing the time taken and rate
@@ -304,7 +303,7 @@ def sendPacket(packet, client, UDPServerSocket, loss):
             pkt = packetHeader(pickled=res)
             pkt.__print__()
         else:
-            print("Ack dropped", pkt.__get__('seq_num'))
+            print("Ack dropped:", pkt.__get__('seq_num'))
             lossFlag=1
     except Exception as inst:
         #socket.timeout
